@@ -1,0 +1,414 @@
+SET @@AUTOCOMMIT =0;
+ START TRANSACTION;
+	SELECT CONCAT(C.PNOME,' ',C.SNOME) AS 'NOME DO CLIENTE',COUNT(P.IDPEDIDO) AS 'PEDIDOS FEITOS' FROM CLIENTE C
+	INNER JOIN PEDIDO P ON C.IDCLIENTE=P.IDCLIENTE
+	GROUP BY C.IDCLIENTE;
+	COMMIT;
+	
+
+
+
+SET @@AUTOCOMMIT =0;
+DELIMITER //
+CREATE PROCEDURE VALOR_NOVO
+	(IN AÇÃO ENUM('SELECT','UPDATE','DELETE','INSERT'), 
+    IN COLUNADESEJADA VARCHAR(40), 
+    IN VALORSUBSTITUIDO VARCHAR(40),
+    IN VALORNOVO VARCHAR(40))
+	BEGIN
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION
+		BEGIN
+			SHOW warnings LIMIT 1;
+			SELECT 'A TRANSAÇÃO FOI ENCERRADA DEVIDO ALGUM ERRO OCORRIDO!' AS WARNINGS;
+			ROLLBACK;
+		END;
+		START TRANSACTION; 
+		BEGIN
+			IF AÇÃO ='SELECT' THEN 
+				SELECT COLUNADESEJADA FROM CLIENTE;
+                COMMIT;
+			ELSEIF AÇÃO = 'UPDATE' THEN
+				UPDATE CLIENTE SET COLUNADESEJADA=VALORSUBSTITUIDO 
+				WHERE COLUNADESEJADA = VALORNOVO;
+                COMMIT;
+			ELSEIF AÇÃO = 'DELETE' THEN
+				DELETE FROM CLIENTE
+				WHERE COLUNADESEJADA=VALORSUBSTITUIDO;
+                COMMIT;
+			ELSEIF AÇÃO='INSERT' THEN
+				INSERT INTO CLIENTE VALUES (VALORNOVO);
+                COMMIT;
+			ELSE SELECT ERROR_MESSAGE() AS 'DEFINA ENTRE SELECT,UPDATE,DELETE OU INSERT';
+				ROLLBACK;
+            END IF;
+END;
+	END//
+DELIMITER ;
+
+
+-- MySQL dump 10.13  Distrib 8.0.11, for Win64 (x86_64)
+--
+-- Host: localhost    Database: ecommerce
+-- ------------------------------------------------------
+-- Server version	8.0.11
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+ SET NAMES utf8mb4 ;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `armazena`
+--
+
+DROP TABLE IF EXISTS `armazena`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `armazena` (
+  `IDARMAZENA` int(11) NOT NULL AUTO_INCREMENT,
+  `IDESTOQUE` int(11) DEFAULT NULL,
+  `IPRODUTO` int(11) DEFAULT NULL,
+  `QUANTIDADE` int(11) DEFAULT NULL,
+  PRIMARY KEY (`IDARMAZENA`),
+  KEY `FK_ARMAZENA_PRODUTO` (`IPRODUTO`),
+  KEY `FK_ARMAZENA_ESTOQUE` (`IDESTOQUE`),
+  CONSTRAINT `FK_ARMAZENA_ESTOQUE` FOREIGN KEY (`IDESTOQUE`) REFERENCES `estoque` (`idestoque`),
+  CONSTRAINT `FK_ARMAZENA_PRODUTO` FOREIGN KEY (`IPRODUTO`) REFERENCES `produto` (`idproduto`)
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `cartão`
+--
+
+DROP TABLE IF EXISTS `cartão`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `cartão` (
+  `NUMERO` varchar(16) NOT NULL,
+  `DATADEVALIDADE` varchar(5) NOT NULL,
+  `CÓDIGO` char(3) NOT NULL,
+  `IDFORMADEPAGAMENTO` int(11) DEFAULT NULL,
+  UNIQUE KEY `IDFORMADEPAGAMENTO` (`IDFORMADEPAGAMENTO`),
+  CONSTRAINT `FK_CARTÃO_FORMADEPAGAMENTO` FOREIGN KEY (`IDFORMADEPAGAMENTO`) REFERENCES `forma_de_pagamento` (`idformadepagamento`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `cliente`
+--
+
+DROP TABLE IF EXISTS `cliente`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `cliente` (
+  `IDCLIENTE` int(11) NOT NULL AUTO_INCREMENT,
+  `PNOME` varchar(20) NOT NULL,
+  `SNOME` varchar(45) NOT NULL,
+  `CPF` char(11) NOT NULL,
+  `CONTATO` char(12) NOT NULL,
+  `TIPO_DE_CONTATO` enum('CEL','COM','FIXO') NOT NULL,
+  `EMAIL` varchar(45) NOT NULL,
+  `DATA_NASCIMENTO` date NOT NULL,
+  `SEXO` enum('M','F','O') NOT NULL,
+  PRIMARY KEY (`IDCLIENTE`),
+  UNIQUE KEY `CPF` (`CPF`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `contem`
+--
+
+DROP TABLE IF EXISTS `contem`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `contem` (
+  `IDCONTEM` int(11) NOT NULL AUTO_INCREMENT,
+  `QUANTIDADEDEPRODUTO` int(11) NOT NULL,
+  `STATUS` enum('DISPONÍVEL','INDISPONÍVEL') DEFAULT NULL,
+  `IDPEDIDO` int(11) DEFAULT NULL,
+  `IDPRODUTO` int(11) DEFAULT NULL,
+  `AVALIAÇÃO` float DEFAULT NULL,
+  PRIMARY KEY (`IDCONTEM`),
+  KEY `FK_CONTEM_PEDIDO` (`IDPEDIDO`),
+  KEY `FK_CONTEM_PRODUTO` (`IDPRODUTO`),
+  CONSTRAINT `FK_CONTEM_PEDIDO` FOREIGN KEY (`IDPEDIDO`) REFERENCES `pedido` (`idpedido`),
+  CONSTRAINT `FK_CONTEM_PRODUTO` FOREIGN KEY (`IDPRODUTO`) REFERENCES `produto` (`idproduto`)
+) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `endereço`
+--
+
+DROP TABLE IF EXISTS `endereço`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `endereço` (
+  `IDENDEREÇO` int(11) NOT NULL AUTO_INCREMENT,
+  `RUA` varchar(45) DEFAULT NULL,
+  `BAIRRO` varchar(45) DEFAULT NULL,
+  `NUMERO` varchar(10) NOT NULL,
+  `CIDADE` varchar(45) DEFAULT NULL,
+  `CEP` char(8) NOT NULL,
+  `ESTADO` char(2) DEFAULT NULL,
+  `PAÍS` varchar(45) DEFAULT NULL,
+  `IDCLIENTE` int(11) DEFAULT NULL,
+  PRIMARY KEY (`IDENDEREÇO`),
+  KEY `FK_ENDEREÇO_CLIENTE` (`IDCLIENTE`),
+  CONSTRAINT `FK_ENDEREÇO_CLIENTE` FOREIGN KEY (`IDCLIENTE`) REFERENCES `cliente` (`idcliente`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `entrega`
+--
+
+DROP TABLE IF EXISTS `entrega`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `entrega` (
+  `IDENTREGA` int(11) NOT NULL AUTO_INCREMENT,
+  `STATUS` enum('PREPARANDO','A CAMINHO','ENTREGUE') NOT NULL,
+  `VALORFRETE` decimal(10,2) NOT NULL,
+  `IDPEDIDO` int(11) DEFAULT NULL,
+  PRIMARY KEY (`IDENTREGA`),
+  KEY `FK_ENTREGA_PEDIDO` (`IDPEDIDO`),
+  CONSTRAINT `FK_ENTREGA_PEDIDO` FOREIGN KEY (`IDPEDIDO`) REFERENCES `pedido` (`idpedido`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `estoque`
+--
+
+DROP TABLE IF EXISTS `estoque`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `estoque` (
+  `IDESTOQUE` int(11) NOT NULL AUTO_INCREMENT,
+  `RUA` varchar(45) DEFAULT NULL,
+  `BAIRRO` varchar(45) DEFAULT NULL,
+  `NUMERO` varchar(10) NOT NULL,
+  `CIDADE` varchar(45) DEFAULT NULL,
+  `CEP` char(8) NOT NULL,
+  `ESTADO` char(2) DEFAULT NULL,
+  `PAÍS` varchar(45) DEFAULT NULL,
+  PRIMARY KEY (`IDESTOQUE`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forma_de_pagamento`
+--
+
+DROP TABLE IF EXISTS `forma_de_pagamento`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `forma_de_pagamento` (
+  `IDFORMADEPAGAMENTO` int(11) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`IDFORMADEPAGAMENTO`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `fornecedor`
+--
+
+DROP TABLE IF EXISTS `fornecedor`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `fornecedor` (
+  `IDFORNECEDOR` int(11) NOT NULL AUTO_INCREMENT,
+  `RAZÃOSOCIAL` varchar(50) NOT NULL,
+  `CNPJ` varchar(50) NOT NULL,
+  `ENDEREÇO` varchar(150) DEFAULT NULL,
+  PRIMARY KEY (`IDFORNECEDOR`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `fornecimento`
+--
+
+DROP TABLE IF EXISTS `fornecimento`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `fornecimento` (
+  `IDFORNECIMENTO` int(11) NOT NULL AUTO_INCREMENT,
+  `QUANTIDADEADQUIRIDA` int(11) NOT NULL,
+  `DATA` date NOT NULL,
+  `VALORDECOMPRA` decimal(10,2) NOT NULL,
+  `IDPRODUTO` int(11) DEFAULT NULL,
+  `IDFORNECEDOR` int(11) DEFAULT NULL,
+  PRIMARY KEY (`IDFORNECIMENTO`),
+  KEY `FK_FORNECIMENTO_PRODUTO` (`IDPRODUTO`),
+  KEY `FK_FORNECIMENTO_FORNECEDOR` (`IDFORNECEDOR`),
+  CONSTRAINT `FK_FORNECIMENTO_FORNECEDOR` FOREIGN KEY (`IDFORNECEDOR`) REFERENCES `fornecedor` (`idfornecedor`),
+  CONSTRAINT `FK_FORNECIMENTO_PRODUTO` FOREIGN KEY (`IDPRODUTO`) REFERENCES `produto` (`idproduto`)
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `pedido`
+--
+
+DROP TABLE IF EXISTS `pedido`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `pedido` (
+  `IDPEDIDO` int(11) NOT NULL AUTO_INCREMENT,
+  `TEMPO_DEVOLUÇÃO` varchar(50) NOT NULL,
+  `STATUS` enum('EM ANDAMENTO','CONCLUIDO','PAGO','CANCELADO') NOT NULL,
+  `IDCLIENTE` int(11) DEFAULT NULL,
+  `IDVENDEDOR` int(11) DEFAULT NULL,
+  `IDFORMADEPAGAMENTO` int(11) DEFAULT NULL,
+  PRIMARY KEY (`IDPEDIDO`),
+  KEY `FK_PEDIDO_CLIENTE` (`IDCLIENTE`),
+  KEY `FK_PEDIDO_VENDEDOR` (`IDVENDEDOR`),
+  KEY `FK_PEDIDO_FORMADEPAGAMENTO` (`IDFORMADEPAGAMENTO`),
+  CONSTRAINT `FK_PEDIDO_CLIENTE` FOREIGN KEY (`IDCLIENTE`) REFERENCES `cliente` (`idcliente`),
+  CONSTRAINT `FK_PEDIDO_FORMADEPAGAMENTO` FOREIGN KEY (`IDFORMADEPAGAMENTO`) REFERENCES `forma_de_pagamento` (`idformadepagamento`),
+  CONSTRAINT `FK_PEDIDO_VENDEDOR` FOREIGN KEY (`IDVENDEDOR`) REFERENCES `vendedor` (`idvendedor`)
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `pix`
+--
+
+DROP TABLE IF EXISTS `pix`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `pix` (
+  `IDENTIFICADOR` varchar(50) NOT NULL,
+  `IDFORMADEPAGAMENTO` int(11) DEFAULT NULL,
+  UNIQUE KEY `IDFORMADEPAGAMENTO` (`IDFORMADEPAGAMENTO`),
+  CONSTRAINT `FK_PIX_FORMADEPAGAMENTO` FOREIGN KEY (`IDFORMADEPAGAMENTO`) REFERENCES `forma_de_pagamento` (`idformadepagamento`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `produto`
+--
+
+DROP TABLE IF EXISTS `produto`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `produto` (
+  `IDPRODUTO` int(11) NOT NULL AUTO_INCREMENT,
+  `VALORDEVENDA` decimal(10,2) NOT NULL,
+  `CATEGORIA` varchar(45) NOT NULL,
+  `NOME` varchar(45) NOT NULL,
+  PRIMARY KEY (`IDPRODUTO`)
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `vendedor`
+--
+
+DROP TABLE IF EXISTS `vendedor`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+ SET character_set_client = utf8mb4 ;
+CREATE TABLE `vendedor` (
+  `IDVENDEDOR` int(11) NOT NULL AUTO_INCREMENT,
+  `NOME` varchar(45) NOT NULL,
+  `ENDEREÇO` varchar(100) NOT NULL,
+  `IDENTIFICAÇÃO` varchar(16) NOT NULL,
+  PRIMARY KEY (`IDVENDEDOR`),
+  UNIQUE KEY `IDENTIFICAÇÃO` (`IDENTIFICAÇÃO`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Temporary view structure for view `vw_relatorio`
+--
+
+DROP TABLE IF EXISTS `vw_relatorio`;
+/*!50001 DROP VIEW IF EXISTS `vw_relatorio`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `vw_relatorio` AS SELECT 
+ 1 AS `IDPEDIDO`,
+ 1 AS `NOME DO CLIENTE`,
+ 1 AS `VALOR DA COMPRA`,
+ 1 AS `ENDEREÇO DE ENTREGA`*/;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Dumping events for database 'ecommerce'
+--
+
+--
+-- Dumping routines for database 'ecommerce'
+--
+/*!50003 DROP PROCEDURE IF EXISTS `INSEREDADOS` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `INSEREDADOS`(IN AÇÃO ENUM('SELECT','UPDATE','DELETE','INSERT'), 
+    IN COLUNADESEJADA VARCHAR(40), 
+    IN VALORSUBSTITUIDO VARCHAR(40),
+    IN VALORNOVO VARCHAR(40))
+BEGIN
+			IF AÇÃO ='SELECT' THEN 
+				SELECT COLUNADESEJADA FROM CLIENTE;
+			ELSEIF AÇÃO = 'UPDATE' THEN
+				UPDATE CLIENTE SET COLUNADESEJADA=VALORSUBSTITUIDO 
+				WHERE COLUNADESEJADA = VALORNOVO;
+			ELSEIF AÇÃO = 'DELETE' THEN
+				DELETE FROM CLIENTE
+				WHERE COLUNADESEJADA=VALORSUBSTITUIDO;
+			ELSEIF AÇÃO='INSERT' THEN
+				INSERT INTO CLIENTE VALUES (VALORNOVO);
+			ELSE SELECT ERROR_MESSAGE() AS 'DEFINA ENTRE SELECT,UPDATE,DELETE OU INSERT';
+			END IF;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
+-- Final view structure for view `vw_relatorio`
+--
+
+/*!50001 DROP VIEW IF EXISTS `vw_relatorio`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `vw_relatorio` AS select `pe`.`IDPEDIDO` AS `IDPEDIDO`,concat(`cl`.`PNOME`,' ',`cl`.`SNOME`) AS `NOME DO CLIENTE`,(`c`.`VALOR` + `e`.`VALORFRETE`) AS `VALOR DA COMPRA`,`cl`.`CEP` AS `ENDEREÇO DE ENTREGA` from (((`pedido` `pe` join (select `c`.`IDPEDIDO` AS `IDPEDIDO`,sum((`c`.`QUANTIDADEDEPRODUTO` * `p`.`VALORDEVENDA`)) AS `VALOR` from (`contem` `c` join `produto` `p` on((`c`.`IDPRODUTO` = `p`.`IDPRODUTO`))) group by `c`.`IDPEDIDO`) `c` on((`pe`.`IDPEDIDO` = `c`.`IDPEDIDO`))) join `entrega` `e` on((`pe`.`IDPEDIDO` = `e`.`IDPEDIDO`))) join (select `c`.`PNOME` AS `PNOME`,`c`.`SNOME` AS `SNOME`,`e`.`CEP` AS `CEP`,`c`.`IDCLIENTE` AS `IDCLIENTE` from (`cliente` `c` join `endereço` `e` on((`c`.`IDCLIENTE` = `e`.`IDCLIENTE`)))) `cl` on((`pe`.`IDCLIENTE` = `cl`.`IDCLIENTE`))) order by `pe`.`IDPEDIDO` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2023-01-23 14:19:02
